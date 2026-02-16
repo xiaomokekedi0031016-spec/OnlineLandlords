@@ -24,6 +24,7 @@ public:
     // 断开连接
     void disConnect();
 private:
+    //判断socket在指定时间内是否有数据可读
     bool readTimeout(int timeout);
     bool writeTimeout(int timeout);
     int readn(char* buf, int count);
