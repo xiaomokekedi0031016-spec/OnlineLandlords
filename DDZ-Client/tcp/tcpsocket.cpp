@@ -52,9 +52,9 @@ QByteArray TcpSocket::recvMsg(int timeout)
         {
             return QByteArray();
         }
-        qDebug() << "接收的数据块长度: " << headLen;
+        qDebug() << "(大端长度)接收的数据块长度: " << headLen;
         headLen = ntohl(headLen);
-        qDebug() << "接收的数据块长度: " << headLen;
+        qDebug() << "(小端长度)接收的数据块长度: " << headLen;
 
         // 申请一块新内存
         char* data = new char[headLen];

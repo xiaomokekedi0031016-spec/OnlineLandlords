@@ -37,6 +37,7 @@ include_directories(
 )
 
 link_directories("D:/OpenSSL/OpenSSL-Win64/lib")
+link_directories("D:/Protobuf/lib")
 
 # 添加子目录
 add_subdirectory(card)
@@ -83,7 +84,7 @@ else()
 endif()
 
 target_link_libraries(DDZ-Client PRIVATE Qt${QT_VERSION_MAJOR}::Widgets
-    card windows control player strategy thread crypto
+    card windows control player strategy thread crypto serialize tcp
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

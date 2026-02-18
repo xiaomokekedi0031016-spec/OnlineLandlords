@@ -3,7 +3,7 @@
 
 #include <QDialog>
 #include <QLineEdit>
-
+#include "codec.h"
 
 namespace Ui {
 class Login;
@@ -19,6 +19,8 @@ public:
 
     // 校验数据
     bool verifyData(QLineEdit* edit);
+    // 连接服务器
+    void startConnect(Message* msg);
     // 槽函数
     void onLogin();
     void onRegister();
@@ -26,6 +28,7 @@ public:
 
 private:
     Ui::Login *ui;
+    //默认的连接状态
     bool m_isConnected = false;
 };
 

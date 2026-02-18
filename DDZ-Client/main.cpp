@@ -43,10 +43,10 @@ int main(int argc, char *argv[])
     // Loading w;
     // w.show();
 
-    test();
+    //test();
 
-    // Login w;
-    // w.show();
+    Login w;
+    w.show();
 
     return a.exec();
 }

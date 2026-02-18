@@ -1,10 +1,14 @@
 #include "login.h"
 #include "ui_login.h"
+#include <QMessageBox>
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
 #include "datamanager.h"
 #include "gamepanel.h"
 #include <QThreadPool>
+#include "codec.h"
+#include <QCryptographicHash>
+#include "communication.h"
 
 Login::Login(QWidget *parent)
     : QDialog(parent)
@@ -61,6 +65,9 @@ Login::Login(QWidget *parent)
 
     // 设置线程池最大的线程数量
     QThreadPool::globalInstance()->setMaxThreadCount(8);
+    // test code
+    ui->userName->setText("hello");
+    ui->password->setText("1Aa*");
 }
 
 Login::~Login()
@@ -90,8 +97,17 @@ void Login::onLogin()
     bool flag2 = verifyData(ui->password);
     if(flag1 && flag2)
     {
-        GamePanel* gamePanel = new GamePanel;
-        gamePanel->show();
+        // GamePanel* gamePanel = new GamePanel;
+        // gamePanel->show();
+        Message msg;
+        msg.userName = ui->userName->text().toUtf8();
+        msg.reqcode = RequestCode::UserLogin;
+        QByteArray passwd = ui->password->text().toUtf8();
+        //toHex转为16进制
+        passwd = QCryptographicHash::hash(passwd, QCryptographicHash::Sha224).toHex();
+        msg.data1 = passwd;
+        // 连接服务器
+        startConnect(&msg);
     }
 }
 
@@ -115,6 +131,44 @@ void Login::onNetOK()
         DataManager* instance = DataManager::getInstance();
         instance->setIP(ui->ipAddr->text().toUtf8());
         instance->setPort(ui->port->text().toUtf8());
+    }
+}
+
+
+
+void Login::startConnect(Message *msg)
+{
+    if(!m_isConnected)
+    {
+        Communication *task = new Communication(*msg);
+        connect(task, &Communication::connectFailed, this, [=](){
+            QMessageBox::critical(this, "连接服务器", "连接服务器失败");
+            m_isConnected = false;
+        });
+        // connect(task, &Communication::loginOk, this, [=](){
+        //     // 将用户名保存到单例对象
+        //     DataManager::getInstance()->setUserName(ui->userName->text().toUtf8());
+        //     // 保存用户名和密码
+        //     saveUserInfo();
+        //     // 显示游戏模式窗口-> 单机版, 网络版
+        //     GameMode* mode = new GameMode;
+        //     mode->show();
+        //     accept();
+        // });
+        // connect(task, &Communication::registerOk, this, [=](){
+        //     ui->stackedWidget->setCurrentIndex(0);
+        // });
+        // connect(task, &Communication::failedMsg, this, [=](QByteArray msg){
+        //     QMessageBox::critical(this, "ERROR", msg);
+        // });
+        m_isConnected = true;
+        QThreadPool::globalInstance()->start(task);
+        //DataManager::getInstance()->setCommunication(task);
+    }
+    else
+    {
+        // // 和服务器进行通信
+        // DataManager::getInstance()->getCommunication()->sendMessage(msg);
     }
 }
 

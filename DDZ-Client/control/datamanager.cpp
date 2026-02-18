@@ -22,6 +22,11 @@ void DataManager::setPort(QByteArray port)
     m_port = port;
 }
 
+void DataManager::setCommunication(Communication *comm)
+{
+    m_commun = comm;
+}
+
 
 QByteArray DataManager::getUserName()
 {
@@ -37,4 +42,12 @@ QByteArray DataManager::getPort()
 {
     return m_port;
 }
+
+Communication *DataManager::getCommunication()
+{
+    return m_commun;
+}
+
+
+
 
