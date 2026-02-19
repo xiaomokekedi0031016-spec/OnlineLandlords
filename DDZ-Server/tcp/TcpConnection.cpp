@@ -19,10 +19,12 @@ int TcpConnection::processRead(void* arg) {
 	if (count > 0)
 	{
 		// 解析斗地主数据
+		conn->m_reply->parseRequest(conn->m_readBuf);
 	}
 	else if(count <= 0)
 	{
 		// 断开和客户端的连接诶
+		conn->addDeleteTask();
 		Debug("和客户端的连接已经断开了....");
 	}
 	return 0;
@@ -60,6 +62,10 @@ TcpConnection::TcpConnection(int fd, EventLoop* evloop) {
 	m_evLoop = evloop;
 	m_readBuf = new Buffer(10240);
 	m_writeBuf = new Buffer(10240);
+	m_reply = new Communication;
+	auto delFunc = std::bind(&TcpConnection::addDeleteTask, this);
+	auto writeFunc = std::bind(&TcpConnection::addWriteTask, this, std::placeholders::_1);
+	m_reply->setCallback(writeFunc, delFunc);
 	m_name = "Connection-" + std::to_string(fd);
     prepareSecretKey();
 	// m_request = new HttpRequest;
@@ -104,5 +110,25 @@ TcpConnection::~TcpConnection() {
 	Debug("连接断开, 释放资源, gameover, connName: %s", m_name.data());
 }
 
+void TcpConnection::addWriteTask(std::string data) {
+	m_writeBuf->appendPackage(data);
+#if 0 // 通过事件进行发送
+	// 1. 检测写事件 -- 修改channel中保存的事件
+	m_channel->setCurrentEvent(FDEvent::WriteEvent);
+	// 2. 修改dispatcher检测的集合 -- 添加任务节点
+	// 1. 检测写事件 -- 修改channel中保存的事件
+	m_channel->setCurrentEvent(FDEvent::WriteEvent);
+	// 2. 修改dispatcher检测的集合 -- 添加任务节点
+	m_evLoop->addTask(m_channel, ElemType::MODIFY);
+#else // 直接发送
+	m_writeBuf->sendData(m_channel->getSocket());
+#endif
+}
+
+void TcpConnection::addDeleteTask()
+{
+	Debug("断开了和客户端的连接, connName = %s", m_name.data());
+	m_evLoop->addTask(m_channel, ElemType::DELETE);
+}
 
 

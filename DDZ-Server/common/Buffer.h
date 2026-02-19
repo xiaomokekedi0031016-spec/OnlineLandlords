@@ -38,7 +38,14 @@ public:
 	//得到读数据的起始位置
 	inline char* data() {
 		return m_data + m_readPos;
-	}	
+	}
+	// 根据参数读出指定数量的数据
+	inline std::string data(int length)
+	{
+		std::string msg(m_data + m_readPos, length);
+		m_readPos += length;
+		return  msg;
+	}
 	inline int readPosIncrease(int count) {
 		m_readPos += count;
 		return m_readPos;

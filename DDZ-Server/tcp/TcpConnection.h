@@ -6,11 +6,17 @@
 #include "HttpRequest.h"
 #include "HttpResponse.h"
 //#define MSG_SEND_AUTO//设置文件的发送方式(启用表示的是通过事件循环处理的对于大文件来说需要占据较大内存，而不启用这个宏表示写一部分数据发一部分数据完美利用好内存)
+#include "Communication.h"
 
 class TcpConnection {
 public:
 	TcpConnection(int fd, EventLoop* evloop);
 	~TcpConnection();
+
+	// 发送数据
+	void addWriteTask(std::string data);
+	// 释放资源
+	void addDeleteTask();
 
 	// 准备秘钥
 	void prepareSecretKey();
@@ -25,6 +31,5 @@ private:
 	Channel* m_channel;//通道	
 	Buffer* m_readBuf;//读缓冲区	
 	Buffer* m_writeBuf;//写缓冲区
-	// HttpRequest* m_request;
-	// HttpResponse* m_response;
+	Communication* m_reply = nullptr;
 };

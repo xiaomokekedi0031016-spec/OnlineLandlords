@@ -14,6 +14,7 @@ include_directories(
         ${PROJECT_SOURCE_DIR}/thread
         ${PROJECT_SOURCE_DIR}/crypto
         ${PROJECT_SOURCE_DIR}/serialize
+        ${PROJECT_SOURCE_DIR}/game
         "/usr/local/ssl/include/"
         # 测试用目录
         ${PROJECT_SOURCE_DIR}/test
@@ -28,10 +29,10 @@ add_subdirectory(thread)
 add_subdirectory(test)
 add_subdirectory(crypto)
 add_subdirectory(serialize)
-
+add_subdirectory(game)
 
 # 链接子目录中生成的静态库文件
-link_libraries(tcp http reactor thread common Test mycrypto serialize)
+link_libraries(tcp http reactor thread common Test mycrypto serialize game)
 
 link_directories(/usr/local/ssl/lib64/)
 
