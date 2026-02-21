@@ -5,6 +5,8 @@
 #include "Buffer.h"
 #include "Codec.h"
 #include "AesCrypto.h"
+#include "MySqlConn.h"
+
 class Communication
 {
 public:
@@ -18,13 +20,17 @@ public:
     void parseRequest(Buffer* buf);
     // 处理秘钥分发
     void handleAesFenfa(Message* reqMsg, Message& resMsg);
-
+    // 处理用户注册
+    void handleRegister(Message* reqMsg, Message& resMsg);
+    //处理用户登录
+    void handleLogin(Message* reqMsg, Message& resMsg);
 
 private:
     std::string m_aesKey;
     sendCallback sendMessage;
     deleteCallback disconnect;
     AesCrypto* m_aes = nullptr;
+    MySqlConn *m_mysql = nullptr;
 };
 
 

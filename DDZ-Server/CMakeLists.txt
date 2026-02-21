@@ -15,7 +15,9 @@ include_directories(
         ${PROJECT_SOURCE_DIR}/crypto
         ${PROJECT_SOURCE_DIR}/serialize
         ${PROJECT_SOURCE_DIR}/game
+        ${PROJECT_SOURCE_DIR}/database
         "/usr/local/ssl/include/"
+        "/usr/include/mysql"
         # 测试用目录
         ${PROJECT_SOURCE_DIR}/test
 )
@@ -30,15 +32,16 @@ add_subdirectory(test)
 add_subdirectory(crypto)
 add_subdirectory(serialize)
 add_subdirectory(game)
+add_subdirectory(database)
 
 # 链接子目录中生成的静态库文件
-link_libraries(tcp http reactor thread common Test mycrypto serialize game)
+link_libraries(tcp http reactor thread common Test mycrypto serialize game database)
 
+link_directories(/usr/lib64/mysql/)
 link_directories(/usr/local/ssl/lib64/)
 
 # 指定可执行文件生成到对应的目录中
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
-
 
 # 编译出可执行文件DDZ_Server
 add_executable(DDZ_Server main.cpp)

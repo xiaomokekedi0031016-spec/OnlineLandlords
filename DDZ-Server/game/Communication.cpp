@@ -5,8 +5,23 @@
 #include "RsaCrypto.h"
 #include "Log.h"
 #include "Infomation.pb.h"
+#include <iostream>
+#include "JsonParse.h"
 
 Communication::Communication() {
+    JsonParse json;
+    std::shared_ptr<DBInfo> info = json.getDatabaseInfo(JsonParse::Mysql);
+    m_mysql = new MySqlConn;
+    bool flag = m_mysql->connect(info->user, info->dbname, info->passwd, info->ip, info->port);
+    // m_mysql = new MySqlConn;
+    // bool flag = m_mysql->connect(
+    //     "root",
+    //     "happy-ddz",
+    //     "123456",
+    //     "192.168.80.100");
+    // std::cout << "111111111111"<< std::endl;
+    std::cout << mysql_error(m_mysql->m_conn) << std::endl;
+    assert(flag);
 }
 
 Communication::~Communication() {
@@ -38,8 +53,10 @@ void Communication::parseRequest(Buffer *buf) {
             handleAesFenfa(ptr.get(), resMsg);
             break;
         case RequestCode::UserLogin:
+            handleLogin(ptr.get(), resMsg);
             break;
         case RequestCode::Register:
+            handleRegister(ptr.get(), resMsg);
             break;
         default:
             break;
@@ -69,4 +86,65 @@ void Communication::handleAesFenfa(Message *reqMsg, Message& resMsg) {
         m_aes = new AesCrypto(AesCrypto::AES_CBC_256, aesKey);
         Debug("秘钥校验成功了--aes");
     }
+}
+
+void Communication::handleRegister(Message *reqMsg, Message &resMsg) {
+    // 查询数据库
+    // select 字段 from 数据库表 where 条件;
+    char sql[1024];
+    sprintf(sql, "SELECT * FROM `user` WHERE `name`='%s';", reqMsg->userName.data());
+    bool flag = m_mysql->query(sql);
+    Debug("flag = %d, sql = %s", flag, sql);
+    if(flag && !m_mysql->next())//sql执行成功但是没有查到数据
+    {
+        // 将注册信息写入到数据库
+        m_mysql->transaction();
+        sprintf(sql, "INSERT INTO `user`(name, passwd, phone, date) VALUES('%s', '%s', '%s', NOW());",
+                reqMsg->userName.data(), reqMsg->data1.data(), reqMsg->data2.data());
+        bool fl1 = m_mysql->update(sql);
+        Debug("fl1 = %d, sql = %s", fl1, sql);
+        sprintf(sql, "INSERT INTO `information`(name, score, status) VALUES('%s', 0, 0);",
+                reqMsg->userName.data());
+        bool fl2 = m_mysql->update(sql);
+        Debug("fl2 = %d, sql = %s", fl2, sql);
+        if(fl1 && fl2)
+        {
+            m_mysql->commit();
+            resMsg.rescode = RespondCode::RegisterOk;
+        }
+        else
+        {
+            m_mysql->rollback();
+            resMsg.rescode = RespondCode::Failed;
+            resMsg.data1 = "数据库插入数据失败!";
+        }
+    }
+    else
+    {
+        resMsg.rescode = RespondCode::Failed;
+        resMsg.data1 = "用户名已经存在, 无法完成注册!";
+    }
+}
+
+void Communication::handleLogin(Message *reqMsg, Message &resMsg) {
+    char sql[1024];
+    sprintf(sql, "SELECT * FROM `user` WHERE `name`='%s' AND passwd='%s' AND (select  count(*) from information where name = '%s' AND status=0);",
+            reqMsg->userName.data(), reqMsg->data1.data(), reqMsg->userName.data());
+    bool flag = m_mysql->query(sql);
+    if(flag && m_mysql->next())
+    {
+        m_mysql->transaction();
+        sprintf(sql, "update `information` set status=1 WHERE `name`='%s'", reqMsg->userName.data());
+        bool flag1 = m_mysql->update(sql);
+        if(flag1)
+        {
+            m_mysql->commit();
+            resMsg.rescode = RespondCode::LoginOk;
+            Debug("用户登录成功了.....................................");
+            return;
+        }
+        m_mysql->rollback();
+    }
+    resMsg.rescode = RespondCode::Failed;
+    resMsg.data1 = "用户名或者密码错误, 或者当前用户已经成功登录了...";
 }
