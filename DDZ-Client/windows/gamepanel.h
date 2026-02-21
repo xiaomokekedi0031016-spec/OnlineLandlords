@@ -93,6 +93,11 @@ public:
 protected:
     void paintEvent(QPaintEvent* ev);
     void mouseMoveEvent(QMouseEvent* ev);
+    void closeEvent(QCloseEvent* ev);
+
+
+signals:
+    void panelClose();
 
 private:
     enum CardAlign{Horizontal, Vertical};

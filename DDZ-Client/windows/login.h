@@ -25,11 +25,17 @@ public:
     void onLogin();
     void onRegister();
     void onNetOK();
+    // 保存数据
+    void saveUserInfo();
+    // 加载数据
+    void loadUserInfo();
 
 private:
     Ui::Login *ui;
     //默认的连接状态
     bool m_isConnected = false;
+    //密钥
+    const QByteArray KEY = "天长地久有时尽,此恨绵绵无绝期!";
 };
 
 #endif // LOGIN_H

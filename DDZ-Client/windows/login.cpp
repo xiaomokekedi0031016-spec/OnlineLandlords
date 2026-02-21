@@ -1,5 +1,8 @@
 #include "login.h"
 #include "ui_login.h"
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QMessageBox>
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
@@ -9,6 +12,7 @@
 #include "codec.h"
 #include <QCryptographicHash>
 #include "communication.h"
+#include "gamemode.h"
 
 Login::Login(QWidget *parent)
     : QDialog(parent)
@@ -65,9 +69,11 @@ Login::Login(QWidget *parent)
 
     // 设置线程池最大的线程数量
     QThreadPool::globalInstance()->setMaxThreadCount(8);
-    // test code
-    ui->userName->setText("hello");
-    ui->password->setText("1Aa*");
+    // // test code
+    // ui->userName->setText("hello");
+    // ui->password->setText("1Aa*");
+
+    loadUserInfo();
 }
 
 Login::~Login()
@@ -118,7 +124,15 @@ void Login::onRegister()
     bool flag3 = verifyData(ui->phone);
     if(flag1 && flag2 && flag3)
     {
-
+        Message msg;
+        msg.userName = ui->regUserName->text().toUtf8();
+        msg.reqcode = RequestCode::Register;
+        QByteArray passwd = ui->regPasswrod->text().toUtf8();
+        passwd = QCryptographicHash::hash(passwd, QCryptographicHash::Sha224).toHex();
+        msg.data1 = passwd;
+        msg.data2 = ui->phone->text().toUtf8();
+        // 连接服务器
+        startConnect(&msg);
     }
 }
 
@@ -145,30 +159,83 @@ void Login::startConnect(Message *msg)
             QMessageBox::critical(this, "连接服务器", "连接服务器失败");
             m_isConnected = false;
         });
-        // connect(task, &Communication::loginOk, this, [=](){
-        //     // 将用户名保存到单例对象
-        //     DataManager::getInstance()->setUserName(ui->userName->text().toUtf8());
-        //     // 保存用户名和密码
-        //     saveUserInfo();
-        //     // 显示游戏模式窗口-> 单机版, 网络版
-        //     GameMode* mode = new GameMode;
-        //     mode->show();
-        //     accept();
-        // });
-        // connect(task, &Communication::registerOk, this, [=](){
-        //     ui->stackedWidget->setCurrentIndex(0);
-        // });
-        // connect(task, &Communication::failedMsg, this, [=](QByteArray msg){
-        //     QMessageBox::critical(this, "ERROR", msg);
-        // });
+        connect(task, &Communication::loginOk, this, [=](){
+            // 将用户名保存到单例对象
+            DataManager::getInstance()->setUserName(ui->userName->text().toUtf8());
+            // 保存用户名和密码
+            saveUserInfo();
+            // 显示游戏模式窗口-> 单机版, 网络版
+            GameMode* mode = new GameMode;
+            mode->show();
+            accept();
+        });
+        connect(task, &Communication::registerOk, this, [=](){
+            ui->stackedWidget->setCurrentIndex(0);
+        });
+        connect(task, &Communication::failedMsg, this, [=](QByteArray msg){
+            QMessageBox::critical(this, "ERROR", msg);
+        });
         m_isConnected = true;
         QThreadPool::globalInstance()->start(task);
-        //DataManager::getInstance()->setCommunication(task);
+        DataManager::getInstance()->setCommunication(task);
     }
     else
     {
         // 和服务器进行通信
         DataManager::getInstance()->getCommunication()->sendMessage(msg);
+    }
+}
+
+
+
+void Login::saveUserInfo()
+{
+    if(ui->savePwd->isChecked())
+    {
+        //Json对象
+        QJsonObject obj;
+        obj.insert("user", ui->userName->text());
+        obj.insert("passwd", ui->password->text());
+        QJsonDocument doc(obj);
+        QByteArray json = doc.toJson();//转为Json字符串
+        // aes 加密
+        AesCrypto aes(AesCrypto::AES_CBC_128, KEY.left(16));
+        json = aes.encrypt(json);
+        // 写文件
+        QFile file("passwd.bin");
+        file.open(QFile::WriteOnly);
+        file.write(json);
+        file.close();
+    }
+    else
+    {
+        QFile file("passwd.bin");
+        file.remove();
+    }
+}
+
+
+
+void Login::loadUserInfo()
+{
+    QFile file("passwd.bin");
+    bool flag = file.open(QFile::ReadOnly);
+    if(flag)
+    {
+        ui->savePwd->setChecked(true);
+        QByteArray all = file.readAll();
+        AesCrypto aes(AesCrypto::AES_CBC_128, KEY.left(16));
+        all = aes.decrypt(all);
+        QJsonDocument doc = QJsonDocument::fromJson(all);
+        QJsonObject obj = doc.object();
+        QString name = obj.value("user").toString();
+        QString passwd = obj.value("passwd").toString();
+        ui->userName->setText(name);
+        ui->password->setText(passwd);
+    }
+    else
+    {
+        ui->savePwd->setChecked(false);
     }
 }
 

@@ -46,9 +46,9 @@ protected:
 signals:
     //与服务器连接失败
     void connectFailed();
-    // void loginOk();
-    // void registerOk();
-    // void failedMsg(QByteArray msg);
+    void loginOk();
+    void registerOk();
+    void failedMsg(QByteArray msg);
     // void playerCount(int number);
     // void startGame(QByteArray msg);
     // void roomExist(bool);

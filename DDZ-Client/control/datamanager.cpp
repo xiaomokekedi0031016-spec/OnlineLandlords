@@ -48,6 +48,14 @@ Communication *DataManager::getCommunication()
     return m_commun;
 }
 
+void DataManager::setGameMode(GameMode mode)
+{
+    m_mode = mode;
+}
 
 
+bool DataManager::isNetworkMode()
+{
+    return m_mode == GameMode::Network ? true : false;
+}
 

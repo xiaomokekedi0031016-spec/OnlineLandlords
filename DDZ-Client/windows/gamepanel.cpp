@@ -954,3 +954,13 @@ void GamePanel::initCountDown()
     });
 }
 
+
+
+void GamePanel::closeEvent(QCloseEvent *ev)
+{
+    emit panelClose();
+    // 判断游戏模式//todo...
+    ev->accept();
+    deleteLater();
+}
+

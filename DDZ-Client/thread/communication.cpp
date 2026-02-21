@@ -19,10 +19,10 @@ Communication::Communication(Message& msg, QObject *parent)
 
 Communication::~Communication()
 {
-    // if(m_aes)
-    // {
-    //     delete m_aes;
-    // }
+    if(m_aes)
+    {
+        delete m_aes;
+    }
 }
 
 void Communication::sendMessage(Message *msg, bool encrypt)
@@ -41,7 +41,7 @@ void Communication::parseRecvMessage()
 {
     // 接收数据
     QByteArray data = m_socket->recvMsg(2);
-    qDebug() << "接收到的数据: " << data;
+    // qDebug() << "接收到的数据: " << data;
     if(data.isEmpty()) return;
     // 反序列化数据
     Codec codec(data);
@@ -52,8 +52,12 @@ void Communication::parseRecvMessage()
     switch(ptr->rescode)
     {
     case RespondCode::LoginOk:
+        emit loginOk();
+        qDebug() << "登录成功了...";
         break;
     case RespondCode::RegisterOk:
+        emit registerOk();
+        qDebug() << "注册成功了...";
         break;
     case RespondCode::RsaFenFa:
         handleRsaFenfa(ptr.get());
@@ -86,8 +90,10 @@ void Communication::parseRecvMessage()
     // {
     //     break;
     // }
-    // case RespondCode::Failed:
-    //     break;
+    case RespondCode::Failed:
+        // qDebug() << "Error: " << ptr->data1;
+        emit failedMsg(ptr->data1);
+        break;
     default:
         break;
     }
