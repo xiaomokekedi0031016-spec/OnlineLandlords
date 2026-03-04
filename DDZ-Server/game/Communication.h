@@ -6,6 +6,7 @@
 #include "Codec.h"
 #include "AesCrypto.h"
 #include "MySqlConn.h"
+#include "Room.h"
 
 class Communication
 {
@@ -24,6 +25,8 @@ public:
     void handleRegister(Message* reqMsg, Message& resMsg);
     //处理用户登录
     void handleLogin(Message* reqMsg, Message& resMsg);
+    //处理加入房间
+    void handleAddRoom(Message* reqMsg, Message& resMsg);
 
 private:
     std::string m_aesKey;
@@ -31,6 +34,7 @@ private:
     deleteCallback disconnect;
     AesCrypto* m_aes = nullptr;
     MySqlConn *m_mysql = nullptr;
+    Room* m_redis = nullptr;
 };
 
 

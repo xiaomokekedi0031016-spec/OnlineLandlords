@@ -8,6 +8,7 @@
 #include "Codec.h"
 #include "RsaCrypto.h"
 #include "Log.h"
+#include "Room.h"
 
 int TcpConnection::processRead(void* arg) {
 	TcpConnection* conn = static_cast<TcpConnection*>(arg);
@@ -79,23 +80,43 @@ TcpConnection::TcpConnection(int fd, EventLoop* evloop) {
 	evloop->addTask(m_channel, ElemType::ADD);
 }
 
-void TcpConnection::prepareSecretKey() {
-	ifstream ifs("public.pem");//打开文件
-	stringstream sstr;
-	sstr << ifs.rdbuf();
-	string data = sstr.str();
-	//发送数据
+void TcpConnection::prepareSecretKey()
+{
+	Room redis;
+	redis.initEnvironment();
+	// 读公钥
+	std::string pubkey = redis.rsaSecKey("PublicKey");
+	// 发送数据
 	Message msg;
 	msg.rescode = RespondCode::RsaFenFa;
-	msg.data1 = data;
-	RsaCrypto rsa("private.pem", RsaCrypto::PrivateKey);
-	data = rsa.sign(data);
+	msg.data1 = pubkey;
+	RsaCrypto rsa;
+	rsa.parseStringToKey(redis.rsaSecKey("PrivateKey"), RsaCrypto::PrivateKey);
+	std::string data = rsa.sign(pubkey);
 	msg.data2 = data;
 	Codec codec(&msg);
 	data = codec.encodeMsg();
 	// 写数据
 	m_writeBuf->appendPackage(data);
 }
+
+// void TcpConnection::prepareSecretKey() {
+// 	ifstream ifs("public.pem");//打开文件
+// 	stringstream sstr;
+// 	sstr << ifs.rdbuf();
+// 	string data = sstr.str();
+// 	//发送数据
+// 	Message msg;
+// 	msg.rescode = RespondCode::RsaFenFa;
+// 	msg.data1 = data;
+// 	RsaCrypto rsa("private.pem", RsaCrypto::PrivateKey);
+// 	data = rsa.sign(data);
+// 	msg.data2 = data;
+// 	Codec codec(&msg);
+// 	data = codec.encodeMsg();
+// 	// 写数据
+// 	m_writeBuf->appendPackage(data);
+// }
 
 TcpConnection::~TcpConnection() {
 	if (m_readBuf && m_readBuf->readableSize() == 0 &&

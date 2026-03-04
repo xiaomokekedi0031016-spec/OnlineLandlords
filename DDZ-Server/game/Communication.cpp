@@ -7,6 +7,7 @@
 #include "Infomation.pb.h"
 #include <iostream>
 #include "JsonParse.h"
+#include "RoomList.h"
 
 Communication::Communication() {
     JsonParse json;
@@ -22,9 +23,25 @@ Communication::Communication() {
     // std::cout << "111111111111"<< std::endl;
     std::cout << mysql_error(m_mysql->m_conn) << std::endl;
     assert(flag);
+    m_redis = new Room;
+    flag = m_redis->initEnvironment();
+    assert(flag);
 }
 
-Communication::~Communication() {
+Communication::~Communication()
+{
+    if(m_redis)
+    {
+        delete m_redis;
+    }
+    if(m_aes)
+    {
+        delete m_aes;
+    }
+    if(m_mysql)
+    {
+        delete m_mysql;
+    }
 }
 
 void Communication::setCallback(Communication::sendCallback func1, Communication::deleteCallback func2)
@@ -58,6 +75,10 @@ void Communication::parseRequest(Buffer *buf) {
         case RequestCode::Register:
             handleRegister(ptr.get(), resMsg);
             break;
+        case RequestCode::AutoRoom:
+        case RequestCode::ManualRoom:
+
+            break;
         default:
             break;
     }
@@ -66,9 +87,12 @@ void Communication::parseRequest(Buffer *buf) {
 }
 
 void Communication::handleAesFenfa(Message *reqMsg, Message& resMsg) {
-    RsaCrypto rsa("private.pem", RsaCrypto::PrivateKey);
+    RsaCrypto rsa;
+    rsa.parseStringToKey(m_redis->rsaSecKey("PrivateKey"), RsaCrypto::PrivateKey);
     std::string aesKey = rsa.priKeyDecrypt(reqMsg->data1);
-    // m_aesKey = rsa.priKeyDecrypt(reqMsg->data1);
+    // RsaCrypto rsa("private.pem", RsaCrypto::PrivateKey);
+    // std::string aesKey = rsa.priKeyDecrypt(reqMsg->data1);
+    // // m_aesKey = rsa.priKeyDecrypt(reqMsg->data1);
     // 哈希校验
     Hash h(HashType::Sha224);
     // h.addData(m_aesKey);
@@ -147,4 +171,48 @@ void Communication::handleLogin(Message *reqMsg, Message &resMsg) {
     }
     resMsg.rescode = RespondCode::Failed;
     resMsg.data1 = "用户名或者密码错误, 或者当前用户已经成功登录了...";
+}
+
+void Communication::handleAddRoom(Message *reqMsg, Message &resMsg) {
+    // 如果当前玩家已经不是第一次(登录之后的)加入房间
+    std::string oldRoom = m_redis->whereAmI(reqMsg->userName);
+    // 查询这个玩家上传加入的房间, 然后把分数读出来
+    int score = m_redis->playerScore(oldRoom, reqMsg->userName);
+    // int score = 0;
+    bool flag = true;
+    std::string roomName;
+    if(reqMsg->reqcode == RequestCode::AutoRoom)
+    {
+        roomName = m_redis->joinRoom(reqMsg->userName);
+    }
+    else
+    {
+        roomName = reqMsg->roomName;
+        flag = m_redis->joinRoom(reqMsg->userName, roomName);
+    }
+    // 判断是否已经加入到了某个房间中
+    if (flag) {
+        // 第一次加载分数, 在redis中更新分数, 最后将分数同步到mysql
+        if(score == 0)
+        {
+            // 查询mysql, 并将其存储到redis中
+            std::string sql = "select score from information where name = '" + reqMsg->userName + "'";
+            bool fl = m_mysql->query(sql);
+            assert(fl);
+            m_mysql->next();
+            score = std::stoi(m_mysql->value(0));
+        }
+        m_redis->updatePlayerScore(roomName, reqMsg->userName, score);
+        // 将房间和玩家的关系保存到单例对象中
+        RoomList* roomList = RoomList::getInstance();
+        roomList->addUser(roomName, reqMsg->userName, sendMessage);
+
+        // 给客户端回复数据
+        resMsg.rescode = RespondCode::JoinRoomOK;
+        resMsg.data1 = to_string(m_redis->getPlayerCount(roomName));
+        resMsg.roomName = roomName;
+    }else {
+        resMsg.rescode = RespondCode::Failed;
+        resMsg.data1 = "抱歉, 加入房间失败了, 人数已满!";
+    }
 }

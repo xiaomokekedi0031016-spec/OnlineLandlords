@@ -1,4 +1,7 @@
 #include "TcpServer.h"
+
+#include <fstream>
+
 #include "Log.h"
 #include <arpa/inet.h>
 #include "TcpConnection.h"
@@ -6,6 +9,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
+#include <sstream>
+#include <unistd.h>
+
+#include "Room.h"
 
 TcpServer::TcpServer(unsigned short port, int threadNum) {
 	// Debug("TcpServer::TcpServer()....");
@@ -87,5 +94,26 @@ void TcpServer::saveRsaKey() {
 	RsaCrypto *rsa = new RsaCrypto;
 	rsa->generateRsaKey(RsaCrypto::BITS_2k);
 	delete rsa;
+	// 读磁盘文件
+	// 读公钥
+	ifstream ifs("public.pem");
+	stringstream sstr;
+	sstr << ifs.rdbuf();
+	string data = sstr.str();
+	ifs.close();
+	// 创建redis对象
+	Room redis;
+	assert(redis.initEnvironment());
+	redis.clear();
+	redis.saveRsaSecKey("PublicKey", data);
+
+	// 私钥
+	ifs.open("private.pem");
+	sstr << ifs.rdbuf();
+	data = sstr.str();
+	ifs.close();
+	redis.saveRsaSecKey("PrivateKey", data);
+	unlink("public.pem");
+	unlink("private.pem");
 }
 

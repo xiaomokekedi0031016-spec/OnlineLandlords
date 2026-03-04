@@ -7,7 +7,7 @@
     "dbname": "happy-ddz"
   },
   "redis": {
-    "ip": "localhost",
+    "ip": "127.0.0.1",
     "port": 6379
   }
 }
