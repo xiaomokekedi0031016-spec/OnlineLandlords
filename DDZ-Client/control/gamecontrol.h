@@ -91,6 +91,10 @@ public:
     // 处理出牌
     void onPlayHand(Player *player, const Cards &card);
 
+
+    // 设置当前玩家
+    void setCurrentPlayer(int index);
+
     // 清空所有玩家的得分
     void clearPlayerScore();
 

@@ -32,8 +32,8 @@ public:
     void handleRsaFenfa(Message* msg);
     // 生成秘钥aes
     QByteArray generateAesKey(KeyLen len);
-    // // 解析扑克牌信息
-    // void parseCards(QByteArray data1, QByteArray data2);
+    // 解析扑克牌信息
+    void parseCards(QByteArray data1, QByteArray data2);
 
     inline void stopLoop()
     {
@@ -49,10 +49,11 @@ signals:
     void loginOk();
     void registerOk();
     void failedMsg(QByteArray msg);
-    // void playerCount(int number);
-    // void startGame(QByteArray msg);
-    // void roomExist(bool);
-    // void somebodyLeave(int count);
+    //房间人数信号
+    void playerCount(int number);
+    void startGame(QByteArray msg);
+    void roomExist(bool);
+    void somebodyLeave(int count);
 
 private:
     bool m_stop = false;

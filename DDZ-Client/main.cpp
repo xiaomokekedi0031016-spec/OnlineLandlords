@@ -1,6 +1,7 @@
 #include "cards.h"
 // #include "loading.h"
 #include <QApplication>
+#include <QFile>
 #include <QResource>
 #include "login.h"
 #include <qDebug>
@@ -37,6 +38,7 @@ void test()
 
 int main(int argc, char *argv[])
 {
+    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QApplication a(argc, argv);
     qRegisterMetaType<Cards>("Cards&");
     qRegisterMetaType<Cards>("Cards");
@@ -44,6 +46,12 @@ int main(int argc, char *argv[])
     // w.show();
 
     //test();
+
+    QFile file(":/conf/style.qss");
+    file.open(QFile::ReadOnly);
+    QByteArray all = file.readAll();
+    a.setStyleSheet(all);
+    file.close();
 
     Login w;
     int ret = w.exec();

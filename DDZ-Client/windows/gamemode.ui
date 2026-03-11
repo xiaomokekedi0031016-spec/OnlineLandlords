@@ -17,7 +17,7 @@
    <item>
     <widget class="QStackedWidget" name="stackedWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="page">
       <layout class="QHBoxLayout" name="horizontalLayout">
@@ -53,7 +53,7 @@
           <item>
            <widget class="QPushButton" name="singleModeBtn">
             <property name="text">
-             <string>单机模式</string>
+             <string/>
             </property>
            </widget>
           </item>
@@ -92,7 +92,7 @@
           <item>
            <widget class="QPushButton" name="netModeBtn">
             <property name="text">
-             <string>网络模式</string>
+             <string/>
             </property>
            </widget>
           </item>
@@ -155,7 +155,7 @@
           <item>
            <widget class="QPushButton" name="autoBtn">
             <property name="text">
-             <string>自动加入房间</string>
+             <string/>
             </property>
            </widget>
           </item>
@@ -214,7 +214,7 @@
           <item>
            <widget class="QPushButton" name="manualBtn">
             <property name="text">
-             <string>手动加入房间</string>
+             <string/>
             </property>
            </widget>
           </item>
@@ -273,7 +273,7 @@
           <item>
            <widget class="QPushButton" name="searchBtn">
             <property name="text">
-             <string>搜索房间</string>
+             <string/>
             </property>
            </widget>
           </item>

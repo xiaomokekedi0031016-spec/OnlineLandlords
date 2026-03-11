@@ -32,6 +32,8 @@ class GamePanel : public QMainWindow
     Q_OBJECT
 
 public:
+    using orderMap = QMap<int, QPair<QByteArray, int>>;
+
     GamePanel(QWidget *parent = nullptr);
     ~GamePanel();
 
@@ -90,6 +92,16 @@ public:
     // 初始化闹钟倒计时
     void initCountDown();
 
+    // 处理网络模式下玩家的发牌次序和分数
+    void initGamePanel(QByteArray msg);
+    // 更新用户名和分数
+    void updatePlayerInfo(orderMap &info);
+    // 开始游戏
+    void startGame();
+    void startGame(int index);
+    // 通知服务器当前玩家出牌了
+    void notifyOtherPlayHand(Cards& cs);
+
 protected:
     void paintEvent(QPaintEvent* ev);
     void mouseMoveEvent(QMouseEvent* ev);
@@ -140,5 +152,6 @@ private:
     QHash<CardPanel*, QRect> m_userCards;//当前用户玩家的扑克牌和扑克牌区域的映射关系
     CountDown* m_countDown;//倒计时闹钟
     BGMControl* m_bgm;//添加bgm
+    QByteArrayList m_nameList;
 };
 #endif // GAMEPANEL_H

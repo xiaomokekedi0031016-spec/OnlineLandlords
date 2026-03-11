@@ -109,7 +109,7 @@
                 <item>
                  <widget class="QPushButton" name="loginBtn">
                   <property name="text">
-                   <string>确定</string>
+                   <string/>
                   </property>
                  </widget>
                 </item>
@@ -225,7 +225,7 @@
                 <item>
                  <widget class="QPushButton" name="registerBtn">
                   <property name="text">
-                   <string>确定</string>
+                   <string/>
                   </property>
                  </widget>
                 </item>
@@ -359,7 +359,7 @@
                 <item>
                  <widget class="QPushButton" name="netOkBtn">
                   <property name="text">
-                   <string>确定</string>
+                   <string/>
                   </property>
                  </widget>
                 </item>
@@ -441,7 +441,7 @@
       <item>
        <widget class="QPushButton" name="homeBtn">
         <property name="text">
-         <string>主页</string>
+         <string/>
         </property>
        </widget>
       </item>
@@ -461,7 +461,7 @@
       <item>
        <widget class="QPushButton" name="netSetBtn">
         <property name="text">
-         <string>网络设置</string>
+         <string/>
         </property>
        </widget>
       </item>

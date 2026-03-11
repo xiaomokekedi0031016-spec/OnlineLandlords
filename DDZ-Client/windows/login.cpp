@@ -19,7 +19,7 @@ Login::Login(QWidget *parent)
     , ui(new Ui::Login)
 {
     ui->setupUi(this);
-    // setFixedSize(480, 376);
+    setFixedSize(480, 376);
     ui->stackedWidget->setCurrentIndex(0);
 
     connect(ui->homeBtn, &QPushButton::clicked, this, [=](){
@@ -154,6 +154,7 @@ void Login::startConnect(Message *msg)
 {
     if(!m_isConnected)
     {
+        //信号和槽后执行
         Communication *task = new Communication(*msg);
         connect(task, &Communication::connectFailed, this, [=](){
             QMessageBox::critical(this, "连接服务器", "连接服务器失败");

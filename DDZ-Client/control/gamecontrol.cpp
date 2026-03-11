@@ -1,5 +1,6 @@
 #include "gamecontrol.h"
 
+#include "datamanager.h"
 #include "playhand.h"
 
 #include <QRandomGenerator>
@@ -45,7 +46,7 @@ void GameControl::playerInit()
     m_robotRight->setNextPlayer(m_robotLeft);
 
     //指定当前玩家
-     m_currPlayer = m_user;
+     // m_currPlayer = m_user;
     //m_currPlayer = m_robotLeft;
 
     //todo...
@@ -106,6 +107,13 @@ Cards GameControl::getPendCards()
 
 void GameControl::initAllCards()
 {
+    // 判断是不是网络模式
+    if(DataManager::getInstance()->isNetworkMode())
+    {
+        m_allCards = DataManager::getInstance()->getCards();
+        m_allCards.add(DataManager::getInstance()->getLast3Cards());
+        return;
+    }
     m_allCards.clear();
     for(int p = Card::Card_Begin+1; p < Card::Card_SJ; ++p){
         for(int s = Card::Suit_Begin+1; s < Card::Suit_End; ++s){
@@ -297,5 +305,23 @@ void GameControl::onPlayHand(Player *player, const Cards &card)
     m_currPlayer = player->getNextPlayer();
     m_currPlayer->preparePlayHand();
     emit playerStatusChanged(m_currPlayer, GameControl::ThinkingForPlayHand);
+}
+
+
+
+void GameControl::setCurrentPlayer(int index)
+{
+    if(index == 1)
+    {
+        m_currPlayer = m_user;
+    }
+    else if(index == 2)
+    {
+        m_currPlayer = m_robotLeft;
+    }
+    else if(index == 3)
+    {
+        m_currPlayer = m_robotRight;
+    }
 }
 

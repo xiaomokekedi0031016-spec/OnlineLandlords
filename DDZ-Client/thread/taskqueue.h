@@ -10,8 +10,8 @@
 // 任务类型
 struct Task
 {
-    int bet = 0;
-    Cards cs;
+    int bet = 0;//叫地主
+    Cards cs;//出牌
 };
 
 // 饿汉模式

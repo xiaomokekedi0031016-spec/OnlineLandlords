@@ -3,24 +3,14 @@
 
 #include <QPushButton>
 
-/******************************************************************************
- *
- * @file       mybutton.h
- * @brief      自定义的按钮
- *
- * @author     badwoman
- * @date       2026/02/06
- * @history
- *****************************************************************************/
-
 class MyButton : public QPushButton
 {
     Q_OBJECT
 public:
     explicit MyButton(QWidget *parent = nullptr);
 
-    //设置图片
-    void setImage(QString normal, QString hover, QString pressed);
+    void setImage(QString normal, QString hover, QString pressed, QString disable=QString());
+    void setBtnDisable(bool flag);
 
 signals:
 
@@ -40,7 +30,9 @@ private:
     QString m_normal;
     QString m_hover;
     QString m_pressed;
+    QString m_disable;
     QPixmap m_pixmap;
+    bool m_isDisable = false;
 
 };
 

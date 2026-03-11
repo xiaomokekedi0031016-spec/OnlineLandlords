@@ -68,28 +68,49 @@ void Communication::parseRecvMessage()
         qDebug() << m_msgInfo.userName << m_msgInfo.reqcode;
         qDebug() << "Aes 的秘钥分发成功了...";
         break;
-    // case RespondCode::JoinRoomOK:
-    //     break;
-    // case RespondCode::DealCards:
-    //     break;
-    // case RespondCode::StartGame:
-    //     break;
-    // case RespondCode::OtherGrabLord:
-    // {
-    //     break;
-    // }
-    // case RespondCode::OtherPlayHand:
-    // {
-    //     break;
-    // }
-    // case RespondCode::SearchRoomOK:
-    // {
-    //     break;
-    // }
-    // case RespondCode::OtherLeaveRoom:
-    // {
-    //     break;
-    // }
+    case RespondCode::JoinRoomOK:
+        DataManager::getInstance()->setRoomName(ptr->roomName);
+        emit playerCount(ptr->data1.toInt());
+        break;
+    case RespondCode::DealCards:
+        parseCards(ptr->data1, ptr->data2);
+        break;
+    case RespondCode::StartGame:
+        emit startGame(ptr->data1);
+        break;
+    case RespondCode::OtherGrabLord:
+    {
+        Task t;
+        t.bet = ptr->data1.toInt();
+        TaskQueue::getInstance()->add(t);
+        break;
+    }
+    case RespondCode::OtherPlayHand:
+    {
+        // data1-=> 数量, data2->数据
+        Task t;
+        QDataStream stream(ptr->data2);
+        for(int i=0; i<ptr->data1.toInt(); ++i)
+        {
+            Card c;
+            stream >> c;
+            t.cs.add(c);
+        }
+        TaskQueue::getInstance()->add(t);
+        break;
+    }
+    case RespondCode::SearchRoomOK:
+    {
+        bool flag = ptr->data1 == "true" ? true : false;
+        emit roomExist(flag);
+        break;
+    }
+    case RespondCode::OtherLeaveRoom:
+    {
+        int count = ptr->data1.toInt();
+        emit somebodyLeave(count);
+        break;
+    }
     case RespondCode::Failed:
         // qDebug() << "Error: " << ptr->data1;
         emit failedMsg(ptr->data1);
@@ -126,26 +147,26 @@ QByteArray Communication::generateAesKey(KeyLen len)
     return time;
 }
 
-// void Communication::parseCards(QByteArray data1, QByteArray data2)
-// {
-//     // xx-xx#xxx-xx#xx-xx
-//     auto func = std::bind([=](QByteArray msg){
-//         auto lst = msg.left(msg.length()-1).split('#');
-//         Cards cs;
-//         for(const auto& item : lst)
-//         {
-//             auto sub = item.split('-');
-//             Card card(static_cast<Card::CardPoint>(sub.last().toInt()),
-//                       static_cast<Card::CardSuit>(sub.first().toInt()));
-//             cs.add(card);
-//         }
-//         return cs;
-//     }, std::placeholders::_1);
-//     Cards cards = func(data1);
-//     Cards last = func(data2);
-//     // // 存储数据
-//     // DataManager::getInstance()->setCards(cards, last);
-// }
+
+void Communication::parseCards(QByteArray data1, QByteArray data2)
+{
+    // xx-xx#xxx-xx#xx-xx
+    auto func = std::bind([=](QByteArray msg){
+        auto lst = msg.left(msg.length()-1).split('#');
+        Cards cs;
+        for(const auto& item : lst){
+            auto sub = item.split('-');
+            Card card(static_cast<Card::CardPoint>(sub.last().toInt()),
+                      static_cast<Card::CardSuit>(sub.first().toInt()));
+            cs.add(card);
+        }
+        return cs;
+    }, std::placeholders::_1);
+    Cards cards = func(data1);
+    Cards last = func(data2);
+    // 存储数据
+    DataManager::getInstance()->setCards(cards, last);
+}
 
 void Communication::run()
 {
@@ -175,3 +196,6 @@ void Communication::run()
     m_socket->disConnect();
     delete m_socket;
 }
+
+
+

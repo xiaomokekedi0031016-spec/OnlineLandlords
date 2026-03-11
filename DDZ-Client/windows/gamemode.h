@@ -15,6 +15,8 @@ public:
     explicit GameMode(QWidget *parent = nullptr);
     ~GameMode();
 
+    void showInfo(int count);
+
 protected:
     void closeEvent(QCloseEvent* ev);
 

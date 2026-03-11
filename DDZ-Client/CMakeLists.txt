@@ -79,6 +79,7 @@ else()
             ${PROJECT_SOURCES}
             ${RES}
             ${ICON_RES}
+            res.qrc
         )
     endif()
 endif()

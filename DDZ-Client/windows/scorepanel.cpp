@@ -46,4 +46,12 @@ void ScorePanel::setMyFontColor(FontColor color)
     }
 }
 
+void ScorePanel::setPlayerName(QByteArray left, QByteArray mid, QByteArray right)
+{
+    ui->leftTitle->setText(left);
+    ui->meTitle->setText(mid);
+    ui->rightTitle->setText(right);
+}
+
+
 

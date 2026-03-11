@@ -24,6 +24,8 @@ public:
     explicit EndingPanel(bool isLord, bool isWin, QWidget *parent = nullptr);
 
     void setPlayerScore(int left, int right, int me);
+    // 设置玩家的名字
+    void setPlayerName(QByteArrayList names);
 
 signals:
     void continueGame();

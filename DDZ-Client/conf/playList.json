@@ -170,11 +170,5 @@
         "qrc:/music/Special_flower.mp3",
         "qrc:/music/Special_menu.mp3",
         "qrc:/music/Special_star.mp3"
-    ],
-"BaoJing":[
-        "qrc:/music/Man_baojing1.mp3",
-        "qrc:/music/Man_baojing2.mp3",
-        "qrc:/music/Woman_baojing1.mp3",
-        "qrc:/music/Woman_baojing2.mp3"
     ]
 }
