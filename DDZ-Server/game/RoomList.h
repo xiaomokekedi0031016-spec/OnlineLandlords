@@ -16,6 +16,14 @@ public:
 
     // 添加用户
     void addUser(std::string roomName, std::string userName, callback sendMessage);
+    //通过房间的名字取出房间里面的信息
+    UserMap getPlayers(std::string roomName);
+    // 得到当前房间中除指定玩家外的其他玩家
+    UserMap getPartners(std::string roomName, std::string userName);
+    // 删除指定房间中的玩家
+    void removePlayer(std::string roomName, std::string userName);
+    // 清空房间内所有玩家
+    void removeRoom(std::string roomName);
 
 private:
     RoomList() = default;

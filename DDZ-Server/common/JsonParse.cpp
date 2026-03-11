@@ -1,6 +1,8 @@
+
 #include <fstream>
 #include <cassert>
 #include "JsonParse.h"
+#include <unistd.h>
 #include <iostream>
 
 std::shared_ptr<DBInfo> JsonParse::getDatabaseInfo(JsonParse::DBType type)
@@ -18,13 +20,20 @@ std::shared_ptr<DBInfo> JsonParse::getDatabaseInfo(JsonParse::DBType type)
     }
     return std::shared_ptr<DBInfo>(info);
 }
-
 JsonParse::JsonParse(std::string fileName)
 {
+    char buf[1024] = {0};
+
+    if(getcwd(buf, sizeof(buf)) != nullptr)
+    {
+        std::cout << "Current working directory: " << buf << std::endl;
+    }
+    else
+    {
+        perror("getcwd error");
+    }
     // 打开文件
     std::ifstream ifs(fileName);
-    // std::cout<<"1111111111"<<std::endl;
-    std::cout<<fileName<<std::endl;
     assert(ifs.is_open());
     // 解析数据
     Json::Reader rd;

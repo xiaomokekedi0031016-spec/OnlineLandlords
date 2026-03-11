@@ -21,7 +21,7 @@ int main(int argc, char* argv[])
 
 #else
 	unsigned short port = 8888;
-	chdir("/home/wz/luffy");
+	// chdir("/home/wz/luffy");
 #endif
 	//启动服务器
 	//Debug("main....");

@@ -18,7 +18,7 @@ class JsonParse
 {
 public:
     enum DBType{Mysql, Redis};
-    JsonParse(std::string fileName = "/home/wz/projects/DDZ-Server/config/config.json");
+    JsonParse(std::string fileName = "../config/config.json");
     // 获取数据
     std::shared_ptr<DBInfo> getDatabaseInfo(DBType type);
 private:

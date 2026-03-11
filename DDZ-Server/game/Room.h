@@ -1,14 +1,14 @@
 //
-// Created by sqks on 2026/2/21.
+// Created by subingwen
 //
 
-#ifndef DDZ_SERVER_ROOM_H
-#define DDZ_SERVER_ROOM_H
+#ifndef SERVER_DDZ_ROOM_H
+#define SERVER_DDZ_ROOM_H
 #include <string>
 #include <sw/redis++/redis.h>
 
-
-class Room {
+class Room
+{
 public:
     Room() = default;
     ~Room();
@@ -37,9 +37,15 @@ public:
     std::string whereAmI(std::string userName);
     // 查询玩家分数
     int playerScore(std::string roomName, std::string userName);
+    // 得到抢地主的次序
+    std::string playersOrder(std::string roomName);
+    // 离开房间
+    void leaveRoom(std::string roomName, std::string userName);
+    // 搜索房间
+    bool searchRoom(std::string roomName);
 
 private:
-    sw::redis::Redis* m_redis;
+    sw::redis::Redis* m_redis = nullptr;
     const std::string OnePlayer = "OnePlayer";
     const std::string TwoPlayer = "TwoPlayers";
     const std::string ThreePlayer = "ThreePlayers";
@@ -47,4 +53,4 @@ private:
 };
 
 
-#endif //DDZ_SERVER_ROOM_H
+#endif //SERVER_DDZ_ROOM_H

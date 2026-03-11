@@ -21,6 +21,7 @@ include_directories(
         # 测试用目录
         ${PROJECT_SOURCE_DIR}/test
 )
+link_directories(/usr/lib64/mysql/)
 
 # 添加子目录
 add_subdirectory(common)
@@ -37,7 +38,6 @@ add_subdirectory(database)
 # 链接子目录中生成的静态库文件
 link_libraries(tcp http reactor thread common Test mycrypto serialize game database)
 
-link_directories(/usr/lib64/mysql/)
 link_directories(/usr/local/ssl/lib64/)
 
 # 指定可执行文件生成到对应的目录中

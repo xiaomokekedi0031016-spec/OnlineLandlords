@@ -6,6 +6,7 @@
 #include "Room.h"
 #include "JsonParse.h"
 #include "Log.h"
+#include <string>
 
 Room::~Room()
 {
@@ -31,11 +32,51 @@ bool Room::initEnvironment()
     }
     return false;
 }
+// bool Room::initEnvironment()
+// {
+//     try {
+//         JsonParse json;
+//         auto info = json.getDatabaseInfo(JsonParse::Redis);
+//
+//         std::string connStr = "tcp://" + info->ip + ":" + std::to_string(info->port);
+//
+//         Debug("Redis connect string: %s", connStr.c_str());
+//
+//         m_redis = new sw::redis::Redis(connStr);
+//
+//         Debug("Redis object created");
+//
+//         auto pong = m_redis->ping();
+//
+//         Debug("Redis ping result: %s", pong.c_str());
+//
+//         return true;
+//     }
+//     catch (const sw::redis::Error &e) {
+//         Debug("Redis error: %s", e.what());
+//     }
+//     catch (const std::exception &e) {
+//         Debug("Exception: %s", e.what());
+//     }
+//
+//     return false;
+// }
+// void Room::clear() {
+//     // flushdb
+//     m_redis->flushdb();
+// }
 
-
-void Room::clear() {
-    // flushdb
-    m_redis->flushdb();
+void Room::clear()
+{
+    try
+    {
+        m_redis->del("RSA");
+        m_redis->del("Players");
+    }
+    catch(const sw::redis::Error &e)
+    {
+        Debug("Redis clear error: %s", e.what());
+    }
 }
 
 void Room::saveRsaSecKey(std::string field, std::string value)
@@ -45,6 +86,7 @@ void Room::saveRsaSecKey(std::string field, std::string value)
 
 std::string Room::rsaSecKey(std::string field) {
     auto value = m_redis->hget("RSA", field);
+
     if(value.has_value())
     {
         return value.value();
@@ -147,4 +189,46 @@ int Room::playerScore(std::string roomName, std::string userName) {
         return value.value();
     }
     return 0;
+}
+
+std::string Room::playersOrder(std::string roomName) {
+    int index = 0;
+    std::string data;
+    std::vector<std::pair<std::string, double>> output;
+    // 对房间中的玩家进行排序, 降序排序zrevrange
+    m_redis->zrevrange(roomName, 0, -1, std::back_inserter(output));
+    for(auto& it : output)
+    {
+        //用户名+次序+积分
+        data += it.first + "-" + std::to_string(++index) + "-" + std::to_string((int)it.second) + "#";
+    }
+    return data;
+}
+
+void Room::leaveRoom(std::string roomName, std::string userName)
+{
+    if(m_redis->sismember(ThreePlayer, roomName))
+    {
+        m_redis->smove(ThreePlayer, Invalid, roomName);
+    }
+    // 从房间中删除玩家
+    m_redis->zrem(roomName, userName);
+    auto count = m_redis->zcard(roomName);
+    if(count == 0)
+    {
+        m_redis->del(roomName);
+        m_redis->srem(Invalid, roomName);
+    }
+}
+
+bool Room::searchRoom(std::string roomName)
+{
+    // 搜索二人间
+    bool flag = m_redis->sismember(TwoPlayer, roomName);
+    // 搜索一人间
+    if(!flag)
+    {
+        flag = m_redis->sismember(OnePlayer, roomName);
+    }
+    return flag;
 }

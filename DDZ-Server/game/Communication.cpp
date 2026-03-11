@@ -5,50 +5,27 @@
 #include "RsaCrypto.h"
 #include "Log.h"
 #include "Infomation.pb.h"
-#include <iostream>
 #include "JsonParse.h"
 #include "RoomList.h"
+// Communication::Communication() {
+//     JsonParse json;
+//     std::shared_ptr<DBInfo> info = json.getDatabaseInfo(JsonParse::Mysql);
+//     m_mysql = new MySqlConn;
+//     bool flag = m_mysql->connect(info->user, info->dbname, info->passwd, info->ip, info->port);
+//     // m_mysql = new MySqlConn;
+//     // bool flag = m_mysql->connect(
+//     //     "root",
+//     //     "happy-ddz",
+//     //     "123456",
+//     //     "192.168.80.100");
+//     // std::cout << "111111111111"<< std::endl;
+//     std::cout << mysql_error(m_mysql->m_conn) << std::endl;
+//     assert(flag);
+//     m_redis = new Room;
+//     flag = m_redis->initEnvironment();
+//     assert(flag);
+// }
 
-Communication::Communication() {
-    JsonParse json;
-    std::shared_ptr<DBInfo> info = json.getDatabaseInfo(JsonParse::Mysql);
-    m_mysql = new MySqlConn;
-    bool flag = m_mysql->connect(info->user, info->dbname, info->passwd, info->ip, info->port);
-    // m_mysql = new MySqlConn;
-    // bool flag = m_mysql->connect(
-    //     "root",
-    //     "happy-ddz",
-    //     "123456",
-    //     "192.168.80.100");
-    // std::cout << "111111111111"<< std::endl;
-    std::cout << mysql_error(m_mysql->m_conn) << std::endl;
-    assert(flag);
-    m_redis = new Room;
-    flag = m_redis->initEnvironment();
-    assert(flag);
-}
-
-Communication::~Communication()
-{
-    if(m_redis)
-    {
-        delete m_redis;
-    }
-    if(m_aes)
-    {
-        delete m_aes;
-    }
-    if(m_mysql)
-    {
-        delete m_mysql;
-    }
-}
-
-void Communication::setCallback(Communication::sendCallback func1, Communication::deleteCallback func2)
-{
-    sendMessage = func1;
-    disconnect = func2;
-}
 
 void Communication::parseRequest(Buffer *buf) {
     // 读数据头
@@ -64,6 +41,7 @@ void Communication::parseRequest(Buffer *buf) {
     // 数据的反序列化
     Codec codec(data);
     Message resMsg;
+    sendCallback myfunc = sendMessage;
     shared_ptr<Message> ptr = codec.decodeMsg();
     switch(ptr->reqcode) {
         case RequestCode::AesFenfa:
@@ -77,27 +55,59 @@ void Communication::parseRequest(Buffer *buf) {
             break;
         case RequestCode::AutoRoom:
         case RequestCode::ManualRoom:
-
+            std::cout<<"111111111111111111111";
+            handleAddRoom(ptr.get(), resMsg);
+            myfunc = std::bind(&Communication::readyForPlay, this,
+                resMsg.roomName, std::placeholders::_1);
+            break;
+        case RequestCode::GrabLord:
+            resMsg.data1 = ptr->data1;
+            resMsg.rescode = RespondCode::OtherGrabLord;
+            myfunc = std::bind(&Communication::notifyOtherPlayers, this, std::placeholders::_1, ptr->roomName, ptr->userName);
+            break;
+        case RequestCode::PlayAHand:
+            resMsg.data1 = ptr->data1;
+            resMsg.data2 = ptr->data2;
+            resMsg.rescode = RespondCode::OtherPlayHand;
+            myfunc = std::bind(&Communication::notifyOtherPlayers, this, std::placeholders::_1, ptr->roomName, ptr->userName);
+            break;
+        case RequestCode::GameOver:
+            handleGameOver(ptr.get());
+            myfunc = nullptr;
+            break;
+        case RequestCode::Continue:
+            restartGame(ptr.get());
+            myfunc = nullptr;
+            break;
+        case RequestCode::SearchRoom:
+            handleSearchRoom(ptr.get(), resMsg);
+            break;
+        case RequestCode::LeaveRoom:
+            handleLeaveRoom(ptr.get(), resMsg);
+            myfunc = nullptr;
             break;
         default:
             break;
     }
-    codec.reLoad(&resMsg);
-    sendMessage(codec.encodeMsg());
+    if(myfunc != nullptr)
+    {
+        codec.reLoad(&resMsg);
+        std::string msg = codec.encodeMsg();
+        // Debug("回复给客户端的数据: %s, size = %d, status: %d", msg.data(), msg.size(), resMsg.rescode);
+        myfunc(msg);
+    }
 }
 
-void Communication::handleAesFenfa(Message *reqMsg, Message& resMsg) {
+void Communication::handleAesFenfa(Message* reqMsg, Message& resMsg)
+{
     RsaCrypto rsa;
     rsa.parseStringToKey(m_redis->rsaSecKey("PrivateKey"), RsaCrypto::PrivateKey);
     std::string aesKey = rsa.priKeyDecrypt(reqMsg->data1);
-    // RsaCrypto rsa("private.pem", RsaCrypto::PrivateKey);
-    // std::string aesKey = rsa.priKeyDecrypt(reqMsg->data1);
-    // // m_aesKey = rsa.priKeyDecrypt(reqMsg->data1);
     // 哈希校验
     Hash h(HashType::Sha224);
-    // h.addData(m_aesKey);
     h.addData(aesKey);
     std::string res = h.result();
+
     resMsg.rescode = RespondCode::AesVerifyOK;
     if(reqMsg->data2 != res)
     {
@@ -112,14 +122,21 @@ void Communication::handleAesFenfa(Message *reqMsg, Message& resMsg) {
     }
 }
 
-void Communication::handleRegister(Message *reqMsg, Message &resMsg) {
+void Communication::setCallback(Communication::sendCallback func1, Communication::deleteCallback func2)
+{
+    sendMessage = func1;
+    disconnect = func2;
+}
+
+void Communication::handleRegister(Message *reqMsg, Message &resMsg)
+{
     // 查询数据库
     // select 字段 from 数据库表 where 条件;
     char sql[1024];
     sprintf(sql, "SELECT * FROM `user` WHERE `name`='%s';", reqMsg->userName.data());
     bool flag = m_mysql->query(sql);
     Debug("flag = %d, sql = %s", flag, sql);
-    if(flag && !m_mysql->next())//sql执行成功但是没有查到数据
+    if(flag && !m_mysql->next())
     {
         // 将注册信息写入到数据库
         m_mysql->transaction();
@@ -150,7 +167,20 @@ void Communication::handleRegister(Message *reqMsg, Message &resMsg) {
     }
 }
 
-void Communication::handleLogin(Message *reqMsg, Message &resMsg) {
+Communication::Communication()
+{
+    JsonParse json;
+    std::shared_ptr<DBInfo> info = json.getDatabaseInfo(JsonParse::Mysql);
+    m_mysql = new MySqlConn;
+    bool flag = m_mysql->connect(info->user, info->dbname, info->passwd, info->ip, info->port);
+    assert(flag);
+    m_redis = new Room;
+    flag = m_redis->initEnvironment();
+    assert(flag);
+}
+
+void Communication::handleLogin(Message *reqMsg, Message &resMsg)
+{
     char sql[1024];
     sprintf(sql, "SELECT * FROM `user` WHERE `name`='%s' AND passwd='%s' AND (select  count(*) from information where name = '%s' AND status=0);",
             reqMsg->userName.data(), reqMsg->data1.data(), reqMsg->userName.data());
@@ -173,12 +203,34 @@ void Communication::handleLogin(Message *reqMsg, Message &resMsg) {
     resMsg.data1 = "用户名或者密码错误, 或者当前用户已经成功登录了...";
 }
 
-void Communication::handleAddRoom(Message *reqMsg, Message &resMsg) {
+Communication::~Communication()
+{
+    if(m_redis)
+    {
+        delete m_redis;
+    }
+    if(m_aes)
+    {
+        delete m_aes;
+    }
+    if(m_mysql)
+    {
+        delete m_mysql;
+    }
+}
+
+void Communication::handleAddRoom(Message *reqMsg, Message &resMsg)
+{
     // 如果当前玩家已经不是第一次(登录之后的)加入房间
     std::string oldRoom = m_redis->whereAmI(reqMsg->userName);
     // 查询这个玩家上传加入的房间, 然后把分数读出来
     int score = m_redis->playerScore(oldRoom, reqMsg->userName);
-    // int score = 0;
+    if(oldRoom != std::string())
+    {
+        m_redis->leaveRoom(oldRoom, reqMsg->userName);
+        RoomList::getInstance()->removePlayer(oldRoom, reqMsg->userName);
+    }
+
     bool flag = true;
     std::string roomName;
     if(reqMsg->reqcode == RequestCode::AutoRoom)
@@ -191,7 +243,8 @@ void Communication::handleAddRoom(Message *reqMsg, Message &resMsg) {
         flag = m_redis->joinRoom(reqMsg->userName, roomName);
     }
     // 判断是否已经加入到了某个房间中
-    if (flag) {
+    if(flag)
+    {
         // 第一次加载分数, 在redis中更新分数, 最后将分数同步到mysql
         if(score == 0)
         {
@@ -203,6 +256,7 @@ void Communication::handleAddRoom(Message *reqMsg, Message &resMsg) {
             score = std::stoi(m_mysql->value(0));
         }
         m_redis->updatePlayerScore(roomName, reqMsg->userName, score);
+
         // 将房间和玩家的关系保存到单例对象中
         RoomList* roomList = RoomList::getInstance();
         roomList->addUser(roomName, reqMsg->userName, sendMessage);
@@ -211,8 +265,186 @@ void Communication::handleAddRoom(Message *reqMsg, Message &resMsg) {
         resMsg.rescode = RespondCode::JoinRoomOK;
         resMsg.data1 = to_string(m_redis->getPlayerCount(roomName));
         resMsg.roomName = roomName;
-    }else {
+    }
+    else
+    {
         resMsg.rescode = RespondCode::Failed;
         resMsg.data1 = "抱歉, 加入房间失败了, 人数已满!";
     }
+}
+
+void Communication::readyForPlay(std::string roomName, std::string data)
+{
+    // 取出单例对象
+    RoomList * instance = RoomList::getInstance();
+    UserMap players = instance->getPlayers(roomName);
+    // 将房间信息和人数信息发送给各个客户端
+    for(auto item : players)
+    {
+        item.second(data);
+        Debug("当前房间内人数: %d==================", players.size());
+    }
+    if(players.size() == 3)
+    {
+        startGame(roomName, players);
+    }
+}
+
+void Communication::dealCards(UserMap players)
+{
+    Message msg;
+    // 洗牌
+    initCards();
+    std::string &all = msg.data1;
+    for(int i=0; i<51; ++i)
+    {
+        // 取出一张牌
+        auto card = takeOneCard();
+        std::string sub = std::to_string(card.first) + "-" + std::to_string(card.second) + "#";
+        all += sub;
+    }
+    // 剩余的3张底牌
+    std::string &lastCard = msg.data2;
+    for(const auto& item : m_cards)
+    {
+        std::string sub = std::to_string(item.first) + "-" + std::to_string(item.second) + "#";
+        lastCard += sub;
+    }
+    msg.rescode = RespondCode::DealCards;
+    Codec codec(&msg);
+    // 遍历当前房间中的所有玩家
+    for(const auto& player : players)
+    {
+        player.second(codec.encodeMsg());
+    }
+}
+
+void Communication::initCards()
+{
+    // key-value map multimap
+    m_cards.clear();
+    // 花色
+    for(int i=1; i<=4; ++i)
+    {
+        // 点数
+        for(int j=1; j<=13; ++j)
+        {
+            m_cards.insert(make_pair(i, j));
+        }
+    }
+    m_cards.insert(make_pair(0, 14));
+    m_cards.insert(make_pair(0, 15));
+}
+
+std::pair<int, int> Communication::takeOneCard()
+{
+    // 生成随机数
+    // 创建随机设备对象
+    std::random_device rd;
+    // 创建随机数生成对象
+    std::mt19937 gen(rd());
+    // 创建随机数分布对象 -> 均匀分布
+    std::uniform_int_distribution<int> dis(0, m_cards.size()-1);
+    int randNum = dis(gen);
+    auto it = m_cards.begin();
+    // 遍历map容器
+    for(int i=0; i<randNum; ++i, ++it);
+    m_cards.erase(it);
+
+    return *it;
+}
+
+void Communication::notifyOtherPlayers(std::string data, std::string roomName, std::string userName)
+{
+    // 得到另外的两个玩家
+    auto players = RoomList::getInstance()->getPartners(roomName, userName);
+    for(const auto& item : players)
+    {
+        item.second(data);
+        Debug("++++++++++++++++++++++++ 房间名: %s, 玩家名字: %s", roomName.data(), userName.data());
+        Debug("------------------------ other player name: %s", item.first.data());
+    }
+}
+
+void Communication::restartGame(Message *reqMsg)
+{
+    // 得到房间内的玩家
+    auto players = RoomList::getInstance()->getPlayers(reqMsg->roomName);
+    // 判断房间人数
+    if(players.size() == 3)
+    {
+        // 清空当前房间内所有的玩家信息
+        RoomList::getInstance()->removeRoom(reqMsg->roomName);
+    }
+    // 将玩家添加到单例对象中
+    RoomList::getInstance()->addUser(reqMsg->roomName, reqMsg->userName, sendMessage);
+
+    players = RoomList::getInstance()->getPlayers(reqMsg->roomName);
+    if(players.size() == 3)
+    {
+        // 发牌并开始游戏
+        startGame(reqMsg->roomName, players);
+    }
+}
+
+void Communication::startGame(std::string roomName, UserMap players)
+{
+    // 房间满了
+    // 发牌数据
+    dealCards(players);
+    // 通知客户端可以开始游戏了
+    Message msg;
+    msg.rescode = RespondCode::StartGame;
+    // data1: userName-次序-分数, 次序的规则: 谁分数高, 谁优先抢地主
+    msg.data1 = m_redis->playersOrder(roomName);
+    Codec codec(&msg);
+    for(const auto& item : players)
+    {
+        item.second(codec.encodeMsg());
+    }
+}
+
+
+
+void Communication::handleGameOver(Message *reqMsg)
+{
+    // redis
+    int score = std::stoi(reqMsg->data1);
+    m_redis->updatePlayerScore(reqMsg->roomName, reqMsg->userName, score);
+    // mysql
+    char sql[1024];
+    sprintf(sql, "update information set score=%d where name='%s'", score, reqMsg->userName.data());
+    m_mysql->update(sql);
+}
+
+void Communication::handleSearchRoom(Message *reqMsg, Message &resMsg)
+{
+    bool flag = m_redis->searchRoom(reqMsg->roomName);
+    resMsg.rescode = RespondCode::SearchRoomOK;
+    resMsg.data1 = flag ? "true" : "false";
+}
+
+void Communication::handleLeaveRoom(Message *reqMsg, Message &resMsg)
+{
+    m_redis->leaveRoom(reqMsg->roomName, reqMsg->userName);
+    RoomList::getInstance()->removePlayer(reqMsg->roomName, reqMsg->userName);
+    resMsg.rescode = RespondCode::OtherLeaveRoom;
+    auto players = RoomList::getInstance()->getPlayers(reqMsg->roomName);
+    resMsg.data1 = std::to_string(players.size());
+    for(auto item : players)
+    {
+        Codec codec(&resMsg);
+        item.second(codec.encodeMsg());
+    }
+}
+
+void Communication::handleGoodBye(Message *reqMsg)
+{
+    // 修改玩家的登录状态
+    char sql[10240] = {0};
+    sprintf(sql, "update information set status = 0 where name = '%s'", reqMsg->userName.data());
+    m_mysql->update(sql);
+    Debug("===========sql = %s, userName: %s", sql, reqMsg->userName.data());
+    // 和客户端断开连接
+    disconnect();
 }

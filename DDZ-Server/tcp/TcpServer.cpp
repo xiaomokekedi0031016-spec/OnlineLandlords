@@ -103,7 +103,7 @@ void TcpServer::saveRsaKey() {
 	ifs.close();
 	// 创建redis对象
 	Room redis;
-	assert(redis.initEnvironment());
+	assert(redis.initEnvironment());//err?
 	redis.clear();
 	redis.saveRsaSecKey("PublicKey", data);
 
